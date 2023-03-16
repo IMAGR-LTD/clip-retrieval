@@ -288,6 +288,7 @@ class ClipFront extends LitElement {
     this.setUrlParams()
     setTimeout(() => this.initialScroll(), 0)
   }
+
   static get styles () {
     return css`
     input:-webkit-autofill,
@@ -484,20 +485,20 @@ class ClipFront extends LitElement {
     src = (disp ? "" : "sss") +src
     */
     return html`
-    <figure style="margin:5px;display:table" 
+    <figure style="margin:5px;display:table"
     style=${'margin:1px; ' + (this.blacklist[src] !== undefined ? 'display:none' : 'display:inline')}>
      ${this.displaySimilarities ? html`<p>${(image['similarity']).toFixed(4)}</p>` : ``}
       ${image['caption'] !== undefined
     ? html`<img src="assets/search.png" class="subTextSearch" @click=${() => { this.text = image['caption']; this.textSearch() }} />` : ``}
      
      <img src="assets/image-search.png" class="subImageSearch" @click=${() => {
-    if (image['image'] !== undefined) {
-      this.image = image['image']
+    if (image['image'] == undefined) {
+      this.updateImageFromUrl(image[this.urlColumn])
     } else if (image[this.urlColumn] !== undefined) {
       this.imageUrl = image[this.urlColumn]
     }
   }} />
-      <img class="pic" src="${src}" alt="${image['caption'] !== undefined ? image['caption'] : ''}"" 
+      <img class="pic" src="${src}" alt="${image['caption'] !== undefined ? image['caption'] : ''}""
       title="${image['caption'] !== undefined ? image['caption'] : ''}"
       @error=${() => { this.blacklist = { ...this.blacklist, ...{ [src]: true } } }} />
       
@@ -523,6 +524,29 @@ class ClipFront extends LitElement {
       return true
     })
   }
+
+  async updateImageFromUrl(imageUrl) {
+    const opts = {
+        mode: 'cors',
+        credentials: 'include',
+        cache: "no-cache",
+    }
+
+    return fetch(imageUrl, opts)
+        .then((response) => response.blob())
+        .then((blob) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = () => {
+              const base64Image = reader.result;
+              resolve(base64Image);
+              this.image = base64Image.split(',')[1]
+            };
+            reader.onerror = reject;
+          });
+        });
+}
 
   render () {
     const preFiltered = this.images
